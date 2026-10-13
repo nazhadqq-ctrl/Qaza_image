@@ -5,3 +5,6 @@ out.log
 Thumbs.db
 public/uploads/*
 !public/uploads/.gitkeep
+payload.zip
+Setup_*.exe
+make_shortcut.ps1
