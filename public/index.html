@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستەمی تۆمارکردنی وێنە و پسووڵە</title>
+    <!-- Modern Arabic/Kurdish Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Connection Status Bar (Top) -->
+    <header class="app-topbar">
+        <div class="topbar-right">
+            <div class="app-logo-badge">
+                <span class="logo-icon">📷</span>
+                <span class="app-title-text">سیستەمی وێنە و پسووڵە</span>
+            </div>
+            <div id="db-status-badge" class="status-badge checking">
+                <span class="status-dot"></span>
+                <span id="db-status-text">پشکنینی پەیوەندی سێرڤەر...</span>
+            </div>
+        </div>
+
+        <div class="topbar-left" id="user-header-info" style="display: none;">
+            <!-- Navigation Links -->
+            <nav class="header-nav">
+                <button class="nav-btn active" id="nav-btn-dash">📊 سەرەکی</button>
+                <button class="nav-btn" id="nav-btn-pic">📷 فۆڕمی وێنە</button>
+                <button class="nav-btn admin-only" id="nav-btn-users">👥 بەکارهێنەران</button>
+            </nav>
+            <div class="user-chip">
+                <span class="user-avatar">👤</span>
+                <span id="header-user-name">ناوی بەکارهێنەر</span>
+                <span id="header-user-role" class="role-tag">بەڕێوەبەر</span>
+            </div>
+            <button id="btn-logout" class="btn-icon" title="دەرچوون">
+                <span>🚪 دەرچوون</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- ================= FORM 1: LOGIN FORM ================= -->
+        <section id="form-login" class="view-section active">
+            <div class="login-wrapper">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="brand-avatar">
+                            <span>🔐</span>
+                        </div>
+                        <h2>چوونەژوورەوەی سیستەم</h2>
+                        <p class="subtitle">سیستەمی بەڕێوەبردن و تۆمارکردنی وێنە</p>
+                    </div>
+
+                    <form id="login-form" autocomplete="off">
+                        <div class="form-group">
+                            <label for="username">
+                                <span>ناوی بەکارهێنەر</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">👤</span>
+                                <input type="text" id="username" placeholder="ناوی بەکارهێنەر بنووسە" required autofocus value="admin">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">
+                                <span>وشەی نهێنی (پاسۆرد)</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <span class="input-icon">🔑</span>
+                                <input type="password" id="password" placeholder="وشەی نهێنی بنووسە" required value="admin123">
+                                <button type="button" id="toggle-password" class="btn-toggle-pass" title="پیشاندان / شاردنەوە">👁️</button>
+                            </div>
+                        </div>
+
+                        <div id="login-alert" class="alert-box" style="display: none;"></div>
+
+                        <button type="submit" id="btn-login-submit" class="btn-primary btn-block">
+                            <span class="btn-text">چوونەژوورەوە</span>
+                            <span class="btn-spinner" style="display: none;">⏳</span>
+                        </button>
+                    </form>
+
+                    <div class="login-footer">
+                        <div class="default-credentials-hint">
+                            <span>بەکارهێنەری سەرەتایی تێست:</span>
+                            <code>admin</code> / <code>admin123</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FORM 2: MAIN DASHBOARD ================= -->
+        <section id="form-dashboard" class="view-section">
+            <div class="dashboard-container">
+                
+                <!-- Welcome Banner -->
+                <div class="welcome-banner">
+                    <div class="welcome-text">
+                        <h1>بەخێربێیت، <span id="dash-user-name">بەڕێوەبەر</span> 👋</h1>
+                        <p>سیستەمی بەڕێوەبردن و تۆمارکردنی وێنەی پسووڵەکان بە سەرکەوتوویی پەیوەستە بە سێرڤەرەوە.</p>
+                    </div>
+                    <div class="banner-quick-actions">
+                        <button class="btn-hero-action" id="btn-hero-open-pic">📷 کردنەوەی فۆڕمی وێنە</button>
+                    </div>
+                </div>
+
+                <!-- Stats Overview -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper amber">
+                            <span>🖼️</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">کۆی وێنە تۆمارکراوەکان</span>
+                            <h3 id="stat-total-images">0</h3>
+                            <span class="stat-sub">پسووڵەی تۆمارکراو</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card admin-only">
+                        <div class="stat-icon-wrapper blue">
+                            <span>👥</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">کۆی بەکارهێنەران</span>
+                            <h3 id="stat-total-users">1</h3>
+                            <span class="stat-sub">بەکارهێنەری چالاک</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper green">
+                            <span>⚡</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">دۆخی سێرڤەر</span>
+                            <h3 id="stat-server-name">چالاکە</h3>
+                            <span class="stat-sub" id="stat-server-status">پەیوەستە بە لۆکاڵ</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper purple">
+                            <span>🗄️</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">بنکەی دراوە</span>
+                            <h3 id="stat-db-name">سێرڤەری سەرەکی</h3>
+                            <span class="stat-sub">داتابەیسی پسووڵەکان</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Cards -->
+                <div class="modules-grid">
+                    <div class="module-card featured" id="card-pic-module">
+                        <div class="module-icon">📷</div>
+                        <h3>فۆڕمی تۆمارکردنی وێنە</h3>
+                        <p>تۆمارکردنی زنجیرە، ژمارەی پسووڵە، بەروار، وێنە بە کەمترین قەبارە لەگەڵ ئەرشیفی تەواو.</p>
+                        <button class="btn-primary" id="btn-goto-pic-form">چوون بۆ فۆڕمی وێنە ➔</button>
+                    </div>
+
+                    <div class="module-card admin-only" id="card-users-module">
+                        <div class="module-icon">👤</div>
+                        <h3>بەشی بەکارهێنەران</h3>
+                        <p>زیادکردنی بەکارهێنەری نوێ، گۆڕینی پاسۆرد و بەڕێوەبردنی دەسەڵاتەکان بۆ چوونەژوورەوەی سیستەم.</p>
+                        <button class="btn-secondary" id="btn-goto-users">کردنەوەی بەشی بەکارهێنەران ➔</button>
+                    </div>
+
+                    <div class="module-card admin-only" id="card-db-module">
+                        <div class="module-icon">⚙️</div>
+                        <h3>زانیاری پەیوەندی بە سێرڤەر</h3>
+                        <p>پشکنینی وردەکاریەکانی سێرڤەر، دۆخی پەیوەندی و خێرایی وەڵامدانەوە.</p>
+                        <button class="btn-secondary" id="btn-show-db-details">پیشاندانی زانیاری تەواو ➔</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= FORM 3: IMAGE REGISTRATION FORM (بەشی وێنە) ================= -->
+        <section id="form-image-registration" class="view-section">
+            <div class="dashboard-container">
+                
+                <!-- Section Header -->
+                <div class="page-title-bar">
+                    <div class="title-details">
+                        <h2>📷 فۆڕمی تۆمارکردنی وێنە و پسووڵە</h2>
+                        <p>فۆڕمی تایبەت بە تۆمارکردنی پسووڵەکان و پاراستنی وێنە بە کەمترین قەبارە</p>
+                    </div>
+                    <div class="title-actions">
+                        <button class="btn-secondary" id="btn-back-to-dash">⬅ گەڕانەوە بۆ سەرەکی</button>
+                    </div>
+                </div>
+
+                <!-- Registration Card & Form -->
+                <div class="pic-form-grid">
+                    
+                    <!-- Left Column: Inputs -->
+                    <div class="card-box form-inputs-box">
+                        <div class="card-box-header">
+                            <h3>📝 زانیاری پسووڵە و تۆمارکردن</h3>
+                            <span class="live-clock-badge" id="live-registration-time">--:--:--</span>
+                        </div>
+
+                        <form id="receipt-image-form" autocomplete="off">
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="pic-serial-no">
+                                        <span>زنجیرە</span>
+                                        <span class="lock-indicator">🔒</span>
+                                    </label>
+                                    <input type="number" id="pic-serial-no" placeholder="خۆکارە" disabled class="input-disabled">
+                                    <small class="hint-text">بە شێوەی خۆکار لە داتابەیسەوە دیاری دەکرێت</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="pic-receipt-no">
+                                        <span>ژمارەی پسووڵە</span>
+                                        <span class="required">*</span>
+                                    </label>
+                                    <input type="text" id="pic-receipt-no" placeholder="ژمارەی پسووڵە بنووسە پاشان Enter دابگرە" required autofocus>
+                                    <small class="hint-text">دوای نووسینی ژمارە، دوگمەی Enter دابگرە بۆ هەڵبژاردنی وێنە</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="pic-receipt-date">
+                                        <span>بەروار</span>
+                                        <span class="lock-indicator">🔒</span>
+                                    </label>
+                                    <input type="date" id="pic-receipt-date" disabled class="input-disabled">
+                                    <small class="hint-text">بەرواری ئەمڕۆ بە خۆکار دیاریکراوە</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="pic-registered-by">
+                                        <span>ناوی یوزەری تۆمارکردن</span>
+                                        <span class="lock-indicator">🔒</span>
+                                    </label>
+                                    <input type="text" id="pic-registered-by" disabled class="input-disabled">
+                                    <small class="hint-text">یوزەری داخڵبووی ئێستا</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <span>بەروار و کاتی تۆمارکردن</span>
+                                </label>
+                                <div class="readonly-timestamp-box" id="pic-created-at-display">
+                                    کاتی تۆمارکردن بە خۆکارانە لە سێرڤەر پاشەکەوت دەکرێت
+                                </div>
+                            </div>
+
+                            <div id="receipt-form-alert" class="alert-box" style="display: none;"></div>
+
+                            <div class="form-actions-bar">
+                                <button type="submit" id="btn-save-receipt" class="btn-primary btn-lg">
+                                    <span>💾 تۆمارکردن لە داتابەیس (Enter)</span>
+                                </button>
+                                <button type="button" id="btn-reset-receipt-form" class="btn-secondary">
+                                    <span>🔄 پاککردنەوە</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Right Column: Image Upload & Compression -->
+                    <div class="card-box image-upload-box">
+                        <div class="card-box-header">
+                            <h3>🖼️ وێنە بە کەمترین کیلۆبایت و بەرزترین کوالێتی</h3>
+                            <span class="badge-pill green">کەمکردنەوەی زیرەکی قەبارە</span>
+                        </div>
+
+                        <!-- Drop Zone -->
+                        <div class="image-dropzone" id="image-dropzone" tabindex="0">
+                            <input type="file" id="pic-file-input" accept="image/*" style="display: none;">
+                            
+                            <div class="dropzone-content" id="dropzone-empty-state">
+                                <div class="dropzone-icon">📷</div>
+                                <h4>وێنە هەڵبژێرە یان لێرە دابنێ</h4>
+                                <p>یان لە دوای ژمارەی پسووڵە <strong>Enter</strong> لێبدە بۆ هەڵبژاردنی فایل</p>
+                                <button type="button" class="btn-secondary btn-sm" id="btn-browse-image">📂 هەڵبژاردنی فایل</button>
+                            </div>
+
+                            <!-- Preview State -->
+                            <div class="dropzone-preview" id="dropzone-preview-state" style="display: none;">
+                                <img id="preview-image-elem" src="" alt="وێنەی دیاریکراو">
+                                <div class="preview-overlay-actions">
+                                    <button type="button" class="btn-preview-action" id="btn-remove-image" title="سڕینەوەی وێنە">✕ سڕینەوە</button>
+                                    <button type="button" class="btn-preview-action" id="btn-enlarge-preview" title="پیشاندانی گەورە">🔍 گەورەکردن</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Compression Info Meter -->
+                        <div class="compression-meter-card" id="compression-meter" style="display: none;">
+                            <div class="meter-stat">
+                                <span class="meter-title">قەبارەی سەرەتایی:</span>
+                                <span class="meter-val text-muted" id="meter-orig-size">-- کیلۆبایت</span>
+                            </div>
+                            <div class="meter-arrow">➔</div>
+                            <div class="meter-stat">
+                                <span class="meter-title">قەبارەی کەمکراوە:</span>
+                                <span class="meter-val text-success" id="meter-opt-size">-- کیلۆبایت</span>
+                            </div>
+                            <div class="meter-savings-badge" id="meter-savings">کەمکراوەتەوە بە ٠٪</div>
+                        </div>
+
+                        <div class="compression-quality-controls" id="quality-controls" style="display: none;">
+                            <label for="quality-slider">کوالێتی کەمکردنەوە:</label>
+                            <input type="range" id="quality-slider" min="0.5" max="0.95" step="0.05" value="0.82">
+                            <span id="quality-val-text">کوالێتی بەرز</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ================= RECORDS ARCHIVE TABLE ================= -->
+                <div class="card-box records-table-box">
+                    <div class="table-header-flex">
+                        <div>
+                            <h3 id="table-main-title">📋 وێنە و پسووڵەکانی ئەمڕۆ</h3>
+                            <p class="subtitle" id="table-subtitle-info">تەنها تۆمارەکانی ئەمڕۆ پیشان دەدرێن بۆ کەمکردنەوەی لۆدی سێرڤەر (بۆ بەروارەکانی تر، گەڕان بەکاربهێنە)</p>
+                        </div>
+                        <div class="table-search-bar">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="input-search-images" placeholder="گەڕان لە هەموو ئەرشیفی تەیبڵەکەدا...">
+                            <button class="btn-secondary" id="btn-refresh-images">🔄 ئەمڕۆ</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="styled-table records-table">
+                            <thead>
+                                <tr>
+                                    <th>زنجیرە</th>
+                                    <th>ژمارەی پسووڵە</th>
+                                    <th>بەروار</th>
+                                    <th>کات</th>
+                                    <th>وێنە</th>
+                                    <th>قەبارە (کیلۆبایت)</th>
+                                    <th>تۆمارکراوە لەلایەن</th>
+                                    <th>کردارەکان</th>
+                                </tr>
+                            </thead>
+                            <tbody id="images-table-body">
+                                <tr>
+                                    <td colspan="8" style="text-align: center;">چاوەڕوانبە...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= MODAL: USERS MANAGEMENT ================= -->
+        <div id="modal-users" class="modal-overlay" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-header">
+                    <h2>👥 بەڕێوەبردنی بەکارهێنەرانی سیستەم</h2>
+                    <button class="btn-close-modal" id="btn-close-users-modal">✕</button>
+                </div>
+                <div class="modal-body">
+                    
+                    <!-- Add User Form -->
+                    <div class="add-user-section">
+                        <h3>➕ زیادکردنی بەکارهێنەری نوێ</h3>
+                        <form id="add-user-form" class="form-row-grid">
+                            <div class="form-group">
+                                <label>ناوی تەواو</label>
+                                <input type="text" id="new-fullname" placeholder="نموونە: نەژاد عەلی" required>
+                            </div>
+                            <div class="form-group">
+                                <label>ناوی بەکارهێنەر</label>
+                                <input type="text" id="new-username" placeholder="ناوی چوونەژوورەوە" required>
+                            </div>
+                            <div class="form-group">
+                                <label>وشەی نهێنی (پاسۆرد)</label>
+                                <input type="password" id="new-password" placeholder="پاسۆردی بەکارهێنەر" required>
+                            </div>
+                            <div class="form-group">
+                                <label>دەسەڵات</label>
+                                <select id="new-role">
+                                    <option value="Admin">بەڕێوەبەر</option>
+                                    <option value="User">بەکارهێنەری ئاسایی</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-btn-align">
+                                <button type="submit" class="btn-primary">زیادکردن</button>
+                            </div>
+                        </form>
+                        <div id="add-user-alert" class="alert-box" style="display: none;"></div>
+                    </div>
+
+                    <hr class="modal-divider">
+
+                    <!-- Users Table -->
+                    <div class="users-table-section">
+                        <h3>📋 لیستی بەکارهێنەران لە بنکەی دراوەدا</h3>
+                        <div class="table-responsive">
+                            <table class="styled-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>ناوی تەواو</th>
+                                        <th>ناوی بەکارهێنەر</th>
+                                        <th>دەسەڵات</th>
+                                        <th>بەرواری دروستکردن</th>
+                                        <th>کردارەکان</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center;">چاوەڕوانبە...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: SQL DB INFO ================= -->
+        <div id="modal-db-info" class="modal-overlay" style="display: none;">
+            <div class="modal-dialog modal-small">
+                <div class="modal-header">
+                    <h2>🔌 زانیاری پەیوەندی بە سێرڤەر</h2>
+                    <button class="btn-close-modal" id="btn-close-db-modal">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-title">ناوی سێرڤەر:</span>
+                            <span class="info-val" id="info-server-val">سێرڤەری لۆکاڵ</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-title">بنکەی دراوە:</span>
+                            <span class="info-val">Pic_Qaza</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-title">دۆخی پەیوەندی:</span>
+                            <span class="info-val text-success">چالاکە و پەیوەستە ✔</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; text-align: left;">
+                        <button class="btn-secondary" id="btn-retest-db">تاقیکردنەوەی دووبارەی پەیوەندی 🔄</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: IMAGE LIGHTBOX ================= -->
+        <div id="modal-lightbox" class="modal-overlay" style="display: none;">
+            <div class="lightbox-dialog">
+                <div class="lightbox-header">
+                    <h3 id="lightbox-title">پیشاندانی وێنەی پسووڵە</h3>
+                    <div class="lightbox-actions">
+                        <button id="btn-lightbox-print" class="btn-primary btn-sm btn-print" title="چاپکردن بە قەبارەی پەڕەی A5">🖨️ چاپکردن (A5)</button>
+                        <a id="lightbox-download-link" href="#" download class="btn-secondary btn-sm">⬇ دابەزاندن</a>
+                        <button class="btn-close-modal" id="btn-close-lightbox">✕</button>
+                    </div>
+                </div>
+                <div class="lightbox-body">
+                    <img id="lightbox-img" src="" alt="وێنەی تەواو">
+                </div>
+                <div class="lightbox-footer" id="lightbox-info-bar">
+                    --
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+        <span>سیستەمی تۆمارکردنی وێنە و پسووڵە © 2026</span>
+        <span class="footer-dot">•</span>
+        <span>بەرنامەی ویندۆز دیسکتۆپ</span>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
