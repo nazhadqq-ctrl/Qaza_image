@@ -2,13 +2,14 @@ const sql = require('mssql');
 
 const dbConfig = {
     user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD || 'Na2652014Va',
-    server: process.env.DB_SERVER || 'localhost', // 'NAZHAD' or 'localhost'
+    password: process.env.DB_PASSWORD || 'sa123',
+    server: process.env.DB_SERVER || '192.168.3.1',
+    port: parseInt(process.env.DB_PORT, 10) || 1433,
     database: process.env.DB_DATABASE || 'Pic_Qaza',
     options: {
         encrypt: false,
         trustServerCertificate: true,
-        connectTimeout: 10000,
+        connectTimeout: 15000,
         requestTimeout: 30000,
         enableArithAbort: true
     },

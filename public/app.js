@@ -6,6 +6,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let originalImageFile = null;
     let compressionQuality = 0.82;
 
+    // Desktop App UX: Disable standard browser context menu (allow in input/textarea)
+    window.addEventListener('contextmenu', (e) => {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+            return;
+        }
+        e.preventDefault();
+    });
+
+    // Desktop App UX: Prevent accidental browser keys like Ctrl+S, Ctrl+P, F3
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey && (e.key === 's' || e.key === 'p' || e.key === 'u')) || e.key === 'F3') {
+            e.preventDefault();
+        }
+    });
+
     // ================= DOM ELEMENTS =================
     // Topbar & Navigation
     const dbStatusBadge = document.getElementById('db-status-badge');
@@ -286,7 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', () => {
         if (confirm('دڵنیایت لە دەرچوون لە سیستەم؟')) {
             currentUser = null;
+            usernameInput.value = '';
+            passwordInput.value = '';
+            loginAlert.style.display = 'none';
             switchView('login');
+            setTimeout(() => usernameInput.focus(), 100);
         }
     });
 

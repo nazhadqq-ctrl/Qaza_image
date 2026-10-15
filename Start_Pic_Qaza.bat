@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo ========================================================
 echo        سیستەمی Pic_Qaza - ویندۆز دیسکتۆپ
-echo        Database: Pic_Qaza ^| Server: NAZHAD
+echo        Database: Pic_Qaza ^| Server: 192.168.3.1
 echo ========================================================
 echo.
 echo [1/2] دەستپێکردنی سێرڤەری بەرنامە لەسەر پۆرت 4500...
@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
     echo سێرڤەری بەرنامە پێشتر چالاک کراوە.
 )
 
-:: دۆزینەوەی مایکرۆسۆفت ئێج لە هەردوو شوێنی پرۆگرام فایڵس
+:: دۆزینەوەی مایکرۆسۆفت ئێج لە شوێنە جیاوازەکان
 set "EDGE_EXE="
 if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
     set "EDGE_EXE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
@@ -30,18 +30,20 @@ if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
     set "EDGE_EXE=%LocalAppData%\Microsoft\Edge\Application\msedge.exe"
 )
 
-echo [2/2] کردنەوەی پەنجەرەی بەرنامەی دیسکتۆپ...
+:: دروستکردنی فۆڵدەری داتای جیاواز تا وەک ئەپی سەربەخۆی دیسکتۆپ کاربکات بەبێ ناونیشانی وێبگەڕ و تابلێت
+set "APP_DATA_DIR=%LOCALAPPDATA%\Pic_Qaza\AppData"
+if not exist "%APP_DATA_DIR%" mkdir "%APP_DATA_DIR%"
+
+echo [2/2] کردنەوەی پەنجەرەی ئەپی دیسکتۆپ...
 if defined EDGE_EXE (
-    start "" "%EDGE_EXE%" --app="http://localhost:4500" --window-size=1260,840
+    start "" "%EDGE_EXE%" --app="http://127.0.0.1:4500" --user-data-dir="%APP_DATA_DIR%" --app-id=Pic_Qaza --window-size=1300,860 --window-position=center --no-first-run --no-default-browser-check --disable-features=Translate,OptimizationHints,MediaRouter --disable-extensions
 ) else (
-    start "" "http://localhost:4500"
+    start "" "http://127.0.0.1:4500"
 )
 
 echo.
 echo ========================================================
-echo  بەرنامەکە بە سەرکەوتوویی کرایەوە!
-echo  ئەگەر پەنجەرەی بەرنامە نەکراوە، لە وێبگەڕ ئەمە بکەرەوە:
-echo  http://localhost:4500  یان  http://127.0.0.1:4500
+echo  بەرنامەکە وەک پەنجەرەی دیسکتۆپ بە سەرکەوتوویی کرایەوە!
 echo ========================================================
 echo.
 echo تکایە ئەم پەنجەرەی کۆنسۆڵە دامەخە تاوەکو بەرنامەکە کار دەکات.
