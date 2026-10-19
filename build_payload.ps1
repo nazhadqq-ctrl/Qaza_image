@@ -79,7 +79,14 @@ if ($LASTEXITCODE -ne 0) {
 $exeSizeMB = [math]::Round((Get-Item $installerExe).Length / 1MB, 2)
 Write-Output "Setup_Pic_Qaza.exe compiled successfully: $exeSizeMB MB"
 
-Write-Output "[6/6] Copying installer to Desktop..."
+Write-Output "[6/6] Copying installer to target locations..."
+$qazaFolder = "C:\Users\Nazha\OneDrive\Desktop\qaza_image"
+if (-not (Test-Path $qazaFolder)) {
+    New-Item -ItemType Directory -Path $qazaFolder | Out-Null
+}
+Copy-Item $installerExe (Join-Path $qazaFolder "Setup_Pic_Qaza.exe") -Force
+Write-Output "Copied to: $qazaFolder\Setup_Pic_Qaza.exe"
+
 $desktop1 = "C:\Users\Nazha\OneDrive\Desktop"
 $desktop2 = "C:\Users\Nazha\Desktop"
 
