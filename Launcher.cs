@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Sockets;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace PicQaza
@@ -14,47 +16,57 @@ namespace PicQaza
             Application.SetCompatibleTextRenderingDefault(false);
 
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string configFile = Path.Combine(baseDir, "app_config.json");
+            string serverScript = Path.Combine(baseDir, "server.js");
 
-            // Server is at 192.168.3.1 on local network port 4500
-            string targetUrl = "http://192.168.3.1:4500";
-
-            if (File.Exists(configFile))
+            // 1. Start background backend service silently (connects to SQL Server at 192.168.3.1:1433)
+            bool isRunning = IsPortOpen("127.0.0.1", 4500, 300);
+            if (!isRunning && File.Exists(serverScript))
             {
-                try
+                string nodeExe = FindNodeExe(baseDir);
+                if (!string.IsNullOrEmpty(nodeExe))
                 {
-                    string json = File.ReadAllText(configFile);
-                    int idx = json.IndexOf("\"networkServerUrl\"", StringComparison.OrdinalIgnoreCase);
-                    if (idx >= 0)
+                    try
                     {
-                        int colon = json.IndexOf(':', idx);
-                        int startQuote = json.IndexOf('"', colon + 1);
-                        int endQuote = json.IndexOf('"', startQuote + 1);
-                        if (startQuote >= 0 && endQuote > startQuote)
+                        ProcessStartInfo psi = new ProcessStartInfo();
+                        psi.FileName = nodeExe;
+                        psi.Arguments = "\"" + serverScript + "\"";
+                        psi.WorkingDirectory = baseDir;
+                        psi.UseShellExecute = false;
+                        psi.CreateNoWindow = true;
+                        psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                        Process.Start(psi);
+
+                        // Wait up to 10 seconds for port 4500 to become active
+                        for (int i = 0; i < 20; i++)
                         {
-                            string url = json.Substring(startQuote + 1, endQuote - startQuote - 1).Trim();
-                            if (!string.IsNullOrEmpty(url))
+                            Thread.Sleep(500);
+                            if (IsPortOpen("127.0.0.1", 4500, 300))
                             {
-                                targetUrl = url;
+                                isRunning = true;
+                                break;
                             }
                         }
                     }
+                    catch { }
                 }
-                catch { }
             }
 
-            targetUrl = targetUrl.Trim();
-            if (!targetUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                !targetUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            // If the local backend service could not be started, warn user nicely instead of dropping into browser error
+            if (!isRunning && !IsPortOpen("127.0.0.1", 4500, 500))
             {
-                targetUrl = "http://" + targetUrl;
+                MessageBox.Show(
+                    "سێرڤەری ناوخۆیی بەرنامەکە هێشتا ئامادە نییە.\n\nتکایە دڵنیابە لە هەبوونی فایلی node.exe لە فۆڵدەری بەرنامەکە و پەیوەندی بە سێرڤەری سەرەکی داتابەیس (192.168.3.1:1433).",
+                    "سیستەمی Pic_Qaza",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
             }
 
-            // Locate browser engine for standalone App Mode (Edge, Chrome, Brave)
+            // 2. Open standalone Desktop App window (Pure App Mode)
+            // No URL bar, no tabs, no browser chrome, no localhost visible anywhere!
             string browserPath = FindAppBrowser();
-
-            // Set up a dedicated, isolated application profile directory
-            // This guarantees that Edge/Chrome opens as a standalone desktop app window without browser tabs or address bar
             string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Pic_Qaza", "AppData");
             try
             {
@@ -65,31 +77,56 @@ namespace PicQaza
             }
             catch { }
 
+            string targetUrl = "http://127.0.0.1:4500";
+
+            if (!string.IsNullOrEmpty(browserPath))
+            {
+                ProcessStartInfo appPsi = new ProcessStartInfo();
+                appPsi.FileName = browserPath;
+                // CRITICAL: Chromium --app switch must NOT have quotes around the URL to enter pure App Mode!
+                appPsi.Arguments = string.Format(
+                    "--app={0} --user-data-dir=\"{1}\" --app-id=Pic_Qaza --window-size=1360,860 --window-position=center --no-first-run --no-default-browser-check --disable-features=Translate,OptimizationHints,MediaRouter --disable-extensions --disable-component-update --disable-background-networking --disable-sync",
+                    targetUrl,
+                    appDataDir
+                );
+                appPsi.UseShellExecute = true;
+
+                Process.Start(appPsi);
+            }
+            else
+            {
+                Process.Start(targetUrl);
+            }
+        }
+
+        static string FindNodeExe(string baseDir)
+        {
+            string localNode = Path.Combine(baseDir, "node.exe");
+            if (File.Exists(localNode)) return localNode;
+
+            string pfNode = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"nodejs\node.exe");
+            if (File.Exists(pfNode)) return pfNode;
+
+            string pfxNode = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"nodejs\node.exe");
+            if (File.Exists(pfxNode)) return pfxNode;
+
+            return "node";
+        }
+
+        static bool IsPortOpen(string host, int port, int timeoutMs = 400)
+        {
             try
             {
-                if (!string.IsNullOrEmpty(browserPath))
+                using (TcpClient client = new TcpClient())
                 {
-                    ProcessStartInfo appPsi = new ProcessStartInfo();
-                    appPsi.FileName = browserPath;
-                    // CRITICAL: Chromium --app switch must NOT have quotes around the URL!
-                    // Example: --app=http://192.168.3.1:4500 --user-data-dir="C:\..."
-                    appPsi.Arguments = string.Format(
-                        "--app={0} --user-data-dir=\"{1}\" --app-id=Pic_Qaza --window-size=1360,860 --window-position=center --no-first-run --no-default-browser-check --disable-features=Translate,OptimizationHints,MediaRouter --disable-extensions --disable-component-update --disable-background-networking --disable-sync",
-                        targetUrl,
-                        appDataDir
-                    );
-                    appPsi.UseShellExecute = true;
-
-                    Process.Start(appPsi);
-                }
-                else
-                {
-                    Process.Start(targetUrl);
+                    var result = client.BeginConnect(host, port, null, null);
+                    bool success = result.AsyncWaitHandle.WaitOne(timeoutMs);
+                    return success && client.Connected;
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                MessageBox.Show("هەڵە لە کردنەوەی بەرنامەی دیسکتۆپ:\n" + ex.Message, "Pic_Qaza", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
         }
 

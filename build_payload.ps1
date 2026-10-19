@@ -13,7 +13,7 @@ Write-Output "[2/6] Compiling Launcher.cs -> Pic_Qaza.exe..."
 $launcherIcon = "/win32icon:" + (Join-Path $sourceDir "app.ico")
 $launcherOut = "/out:" + (Join-Path $sourceDir "Pic_Qaza.exe")
 $launcherSrc = Join-Path $sourceDir "Launcher.cs"
-& $cscPath /target:winexe $launcherIcon $launcherOut $launcherSrc
+& $cscPath /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll $launcherIcon $launcherOut $launcherSrc
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Compilation of Pic_Qaza.exe FAILED"
     exit 1
@@ -55,8 +55,22 @@ if (Test-Path (Join-Path $sourceDir "public\uploads\.gitkeep")) {
 Write-Output "Copying node_modules..."
 Copy-Item -Recurse (Join-Path $sourceDir "node_modules") (Join-Path $stageDir "node_modules")
 
+Write-Output "Copying portable node.exe runtime..."
+$nodePath = "C:\Program Files\nodejs\node.exe"
+if (-not (Test-Path $nodePath)) {
+    $nodeCmd = Get-Command node.exe -ErrorAction SilentlyContinue
+    if ($nodeCmd) { $nodePath = $nodeCmd.Source }
+}
+if (Test-Path $nodePath) {
+    Copy-Item $nodePath (Join-Path $stageDir "node.exe")
+    Write-Output "Bundled portable node.exe into application package."
+} else {
+    Write-Warning "Could not find node.exe to bundle!"
+}
+
 Write-Output "[4/6] Creating payload.zip..."
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.IO.Compression
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stageDir, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Remove-Item -Recurse -Force $stageDir
 
@@ -69,7 +83,7 @@ $outArg = "/out:" + $installerExe
 $resArg = "/resource:" + $zipPath + ",payload.zip"
 $srcArg = $sourceDir + "\SetupWizard.cs"
 
-& $cscPath /target:winexe $outArg $iconArg $resArg /r:System.IO.Compression.FileSystem.dll /r:System.IO.Compression.dll $srcArg
+& $cscPath /target:winexe $outArg $iconArg $resArg /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.FileSystem.dll /r:System.IO.Compression.dll $srcArg
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Compilation of Setup_Pic_Qaza.exe FAILED"

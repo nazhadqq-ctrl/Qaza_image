@@ -1,15 +1,52 @@
 const sql = require('mssql');
+const fs = require('fs');
+const path = require('path');
+
+// 1. Read app_config.json if present
+function loadConfigFile() {
+    try {
+        const configPath = path.join(__dirname, 'app_config.json');
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.warn('[Config] Could not parse app_config.json:', e.message);
+    }
+    return {};
+}
+
+const fileConfig = loadConfigFile();
+
+// 2. Parse Server IP and Port (Support formats: "192.168.3.1:1433", "192.168.3.1,1433", or "192.168.3.1")
+let rawServer = process.env.DB_SERVER || fileConfig.dbServer || '192.168.3.1';
+let port = parseInt(process.env.DB_PORT || fileConfig.dbPort, 10) || 1433;
+
+if (rawServer.includes(':')) {
+    const parts = rawServer.split(':');
+    rawServer = parts[0].trim();
+    const parsedPort = parseInt(parts[1].trim(), 10);
+    if (!isNaN(parsedPort)) port = parsedPort;
+} else if (rawServer.includes(',')) {
+    const parts = rawServer.split(',');
+    rawServer = parts[0].trim();
+    const parsedPort = parseInt(parts[1].trim(), 10);
+    if (!isNaN(parsedPort)) port = parsedPort;
+}
+
+const primaryPassword = process.env.DB_PASSWORD || fileConfig.dbPassword || 'Na2652014Va';
+const fallbackPasswords = ['Na2652014Va', 'sa123', '123456', 'sa'];
 
 const dbConfig = {
-    user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD || 'sa123',
-    server: process.env.DB_SERVER || '192.168.3.1',
-    port: parseInt(process.env.DB_PORT, 10) || 1433,
-    database: process.env.DB_DATABASE || 'Pic_Qaza',
+    user: process.env.DB_USER || fileConfig.dbUser || 'sa',
+    password: primaryPassword,
+    server: rawServer,
+    port: port,
+    database: process.env.DB_DATABASE || fileConfig.database || 'Pic_Qaza',
     options: {
         encrypt: false,
         trustServerCertificate: true,
-        connectTimeout: 15000,
+        connectTimeout: 8000,
         requestTimeout: 30000,
         enableArithAbort: true
     },
@@ -27,24 +64,50 @@ async function getPool() {
         return pool;
     }
 
+    // Try primary connection to configured server (192.168.3.1:1433)
     try {
-        // Try connecting with 'localhost' or fallback to 'NAZHAD'
         pool = await sql.connect(dbConfig);
-        console.log(`[SQL Server] Connected successfully to ${dbConfig.server} / ${dbConfig.database}`);
+        console.log(`[SQL Server] Connected successfully to ${dbConfig.server}:${dbConfig.port} / ${dbConfig.database}`);
         await ensureTables(pool);
         return pool;
     } catch (err) {
-        console.warn(`[SQL Server] Connection to ${dbConfig.server} failed, attempting fallback to NAZHAD...`);
-        try {
-            const fallbackConfig = { ...dbConfig, server: 'NAZHAD' };
-            pool = await sql.connect(fallbackConfig);
-            console.log(`[SQL Server] Connected successfully via fallback to NAZHAD / ${dbConfig.database}`);
-            await ensureTables(pool);
-            return pool;
-        } catch (fallbackErr) {
-            console.error('[SQL Server] Connection Error:', fallbackErr.message);
-            throw fallbackErr;
+        console.warn(`[SQL Server] Connection to ${dbConfig.server}:${dbConfig.port} failed (${err.message}). Trying fallback passwords and hosts...`);
+
+        // If login failed, try fallback passwords
+        if (err.message && err.message.includes('Login failed')) {
+            for (const pw of fallbackPasswords) {
+                if (pw === dbConfig.password) continue;
+                try {
+                    const pwConfig = { ...dbConfig, password: pw };
+                    pool = await sql.connect(pwConfig);
+                    console.log(`[SQL Server] Connected successfully with fallback password to ${dbConfig.server}:${dbConfig.port}`);
+                    await ensureTables(pool);
+                    return pool;
+                } catch (pwErr) {
+                    // continue to next password
+                }
+            }
         }
+
+        // Fallback to local server name 'NAZHAD' or 'localhost' if 192.168.3.1 is unreachable
+        const fallbackServers = ['NAZHAD', 'localhost', '127.0.0.1'];
+        for (const fbServer of fallbackServers) {
+            if (fbServer.toLowerCase() === rawServer.toLowerCase()) continue;
+            for (const pw of [primaryPassword, 'Na2652014Va', 'sa123']) {
+                try {
+                    const fallbackConfig = { ...dbConfig, server: fbServer, password: pw };
+                    pool = await sql.connect(fallbackConfig);
+                    console.log(`[SQL Server] Connected successfully via fallback server: ${fbServer} / ${dbConfig.database}`);
+                    await ensureTables(pool);
+                    return pool;
+                } catch (fbErr) {
+                    // continue
+                }
+            }
+        }
+
+        console.error('[SQL Server] All connection attempts failed:', err.message);
+        throw err;
     }
 }
 

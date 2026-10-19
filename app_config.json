@@ -1,6 +1,8 @@
 {
-  "serverUrl": "http://192.168.3.1:4500",
-  "networkServerUrl": "http://192.168.3.1:4500",
-  "useNetworkServer": true,
-  "notes": "سێرڤەری سەرەکی لەسەر تۆڕی ناوخۆیی 192.168.3.1:4500 کاردەکات."
+  "dbServer": "192.168.3.1",
+  "dbPort": 1433,
+  "database": "Pic_Qaza",
+  "dbUser": "sa",
+  "dbPassword": "Na2652014Va",
+  "notes": "سێرڤەری سەرەکی لەسەر 192.168.3.1:1433 کاردەکات."
 }

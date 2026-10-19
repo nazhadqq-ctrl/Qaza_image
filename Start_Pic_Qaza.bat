@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo ========================================================
 echo        سیستەمی Pic_Qaza - ویندۆز دیسکتۆپ
-echo        Database: Pic_Qaza ^| Server: 192.168.3.1
+echo        Database: Pic_Qaza ^| Server: 192.168.3.1:1433
 echo ========================================================
 echo.
 echo [1/2] دەستپێکردنی سێرڤەری بەرنامە لەسەر پۆرت 4500...
@@ -36,7 +36,7 @@ if not exist "%APP_DATA_DIR%" mkdir "%APP_DATA_DIR%"
 
 echo [2/2] کردنەوەی پەنجەرەی ئەپی دیسکتۆپ...
 if defined EDGE_EXE (
-    start "" "%EDGE_EXE%" --app="http://127.0.0.1:4500" --user-data-dir="%APP_DATA_DIR%" --app-id=Pic_Qaza --window-size=1300,860 --window-position=center --no-first-run --no-default-browser-check --disable-features=Translate,OptimizationHints,MediaRouter --disable-extensions
+    start "" "%EDGE_EXE%" --app=http://127.0.0.1:4500 --user-data-dir="%APP_DATA_DIR%" --app-id=Pic_Qaza --window-size=1360,860 --window-position=center --no-first-run --no-default-browser-check --disable-features=Translate,OptimizationHints,MediaRouter --disable-extensions
 ) else (
     start "" "http://127.0.0.1:4500"
 )

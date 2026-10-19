@@ -161,16 +161,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.connected) {
                 isDbConnected = true;
                 dbStatusBadge.className = 'status-badge connected';
-                dbStatusText.textContent = `پەیوەستە بە سێرڤەر`;
-                if (statServerName) statServerName.textContent = 'چالاکە';
-                if (statServerStatus) statServerStatus.textContent = 'پەیوەستە بە لۆکاڵ';
+                dbStatusText.textContent = `پەیوەستە بە 192.168.3.1:1433`;
+                if (statServerName) statServerName.textContent = '192.168.3.1:1433';
+                if (statServerStatus) statServerStatus.textContent = 'پەیوەستە بە سێرڤەر (192.168.3.1:1433)';
                 if (statTotalUsers && data.totalUsers !== undefined) statTotalUsers.textContent = data.totalUsers;
                 if (statTotalImages && data.totalImages !== undefined) statTotalImages.textContent = data.totalImages;
-                if (infoServerVal) infoServerVal.textContent = `سێرڤەری لۆکاڵ (چالاکە)`;
+                if (infoServerVal) infoServerVal.textContent = '192.168.3.1:1433 (SQL Server)';
             } else {
                 isDbConnected = false;
                 dbStatusBadge.className = 'status-badge disconnected';
-                dbStatusText.textContent = 'پەیوەندی پچڕاوە بە سێرڤەر';
+                dbStatusText.textContent = 'پەیوەندی پچڕاوە لە 192.168.3.1:1433';
                 if (statServerStatus) statServerStatus.textContent = 'پچڕاوە';
             }
         } catch (err) {

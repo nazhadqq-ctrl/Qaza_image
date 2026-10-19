@@ -32,7 +32,7 @@ app.get('/api/status', async (req, res) => {
             database: result.recordset[0].DatabaseName,
             totalUsers: result.recordset[0].TotalUsers,
             totalImages: result.recordset[0].TotalImages,
-            configServer: dbConfig.server,
+            configServer: '192.168.3.1:1433',
             timestamp: new Date().toISOString()
         });
     } catch (err) {

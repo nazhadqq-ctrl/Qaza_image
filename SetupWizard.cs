@@ -147,7 +147,7 @@ namespace PicQazaInstaller
             lblWelcomeTitle.AutoSize = true;
 
             Label lblWelcomeText = new Label();
-            lblWelcomeText.Text = "ئەم ڕێبەرە بەرنامەی Pic_Qaza بە شێوەی ئەپی ڕەسەنی ویندۆز دیسکتۆپ دادەمەزرێنێت.\n\nتایبەتمەندییەکان:\n • کارکردنی ڕاستەوخۆ وەک بەرنامەی دیسکتۆپ بەبێ کردنەوەی وێب براوسەر\n • پەیوەستبوونی خۆکار بە سێرڤەری سەرەکی (192.168.3.1:4500)\n • کردنەوەی ڕاستەوخۆی فۆرمی لۆگین بەبێ دەستکاری و ڕێکخستنی زیادە\n • تۆمارکردن و ئەرشیفکردنی خێرای وێنەی پسووڵەکان و چاپی قەبارەی ستانداردی A5\n • دروستکردنی شۆرتکەتی تایبەت لەسەر شاشەی دیسکتۆپ\n\nتکایە کلیک لە دوگمەی 'دواتر ➔' بکە بۆ بەردەوامبوون.";
+            lblWelcomeText.Text = "ئەم ڕێبەرە بەرنامەی Pic_Qaza بە شێوەی ئەپی ڕەسەنی ویندۆز دیسکتۆپ دادەمەزرێنێت.\n\nتایبەتمەندییەکان:\n • کارکردنی ڕاستەوخۆ وەک بەرنامەی دیسکتۆپ بەبێ کردنەوەی وێب براوسەر\n • پەیوەستبوونی خۆکار بە سێرڤەری سەرەکی (192.168.3.1:1433)\n • کردنەوەی ڕاستەوخۆی فۆرمی لۆگین بەبێ دەستکاری و ڕێکخستنی زیادە\n • تۆمارکردن و ئەرشیفکردنی خێرای وێنەی پسووڵەکان و چاپی قەبارەی ستانداردی A5\n • دروستکردنی شۆرتکەتی تایبەت لەسەر شاشەی دیسکتۆپ\n\nتکایە کلیک لە دوگمەی 'دواتر ➔' بکە بۆ بەردەوامبوون.";
             lblWelcomeText.Location = new Point(30, 70);
             lblWelcomeText.Size = new Size(600, 210);
             lblWelcomeText.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
@@ -228,7 +228,7 @@ namespace PicQazaInstaller
             chkLaunchAfter.AutoSize = true;
 
             Label lblServerInfo = new Label();
-            lblServerInfo.Text = "🔗 ئایپی سێرڤەر: 192.168.3.1:4500 (تۆڕی ناوخۆیی - Local Network)";
+            lblServerInfo.Text = "🔗 سێرڤەری داتابەیس: 192.168.3.1:1433 (Microsoft SQL Server)";
             lblServerInfo.ForeColor = Color.FromArgb(2, 132, 199);
             lblServerInfo.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             lblServerInfo.Location = new Point(30, 248);
@@ -452,9 +452,9 @@ namespace PicQazaInstaller
 
                 try { File.Delete(tempZip); } catch { }
 
-                // Write fixed app_config.json for direct connection to 192.168.3.1:4500
+                // Write fixed app_config.json for direct connection to 192.168.3.1:1433
                 string configPath = Path.Combine(targetDir, "app_config.json");
-                string configJson = "{\n  \"serverUrl\": \"http://192.168.3.1:4500\",\n  \"networkServerUrl\": \"http://192.168.3.1:4500\",\n  \"useNetworkServer\": true,\n  \"notes\": \"سێرڤەری سەرەکی لەسەر 192.168.3.1:4500 کاردەکات.\"\n}\n";
+                string configJson = "{\n  \"dbServer\": \"192.168.3.1\",\n  \"dbPort\": 1433,\n  \"database\": \"Pic_Qaza\",\n  \"dbUser\": \"sa\",\n  \"dbPassword\": \"Na2652014Va\",\n  \"notes\": \"سێرڤەری سەرەکی لەسەر 192.168.3.1:1433 کاردەکات.\"\n}\n";
                 File.WriteAllText(configPath, configJson);
 
                 // Ensure uploads directory exists
