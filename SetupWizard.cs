@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Windows.Forms;
 
@@ -31,9 +32,14 @@ namespace PicQazaInstaller
         private Panel pageProgress;
         private Panel pageFinished;
 
-        // Folder selection page
+        // Folder & Server Config page
         private TextBox txtInstallPath;
         private Button btnBrowse;
+        private RadioButton rbClientMode;
+        private RadioButton rbServerMode;
+        private TextBox txtServerUrl;
+        private Button btnTestServer;
+        private Label lblServerStatus;
         private CheckBox chkDesktopShortcut;
         private CheckBox chkStartMenuShortcut;
         private CheckBox chkLaunchAfter;
@@ -55,7 +61,7 @@ namespace PicQazaInstaller
         private void InitializeComponent()
         {
             this.Text = "ڕێبەری دامەزراندنی بەرنامەی Pic_Qaza";
-            this.Size = new Size(680, 480);
+            this.Size = new Size(720, 580);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -63,6 +69,12 @@ namespace PicQazaInstaller
             this.RightToLeftLayout = true;
             this.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
             this.BackColor = Color.White;
+
+            string icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+            if (File.Exists(icoPath))
+            {
+                try { this.Icon = new Icon(icoPath); } catch { }
+            }
 
             // 1. Banner
             bannerPanel = new Panel();
@@ -111,13 +123,13 @@ namespace PicQazaInstaller
             btnBack = new Button();
             btnBack.Text = "⬅ پێشوو";
             btnBack.Size = new Size(95, 34);
-            btnBack.Location = new Point(440, 13);
+            btnBack.Location = new Point(480, 13);
             btnBack.Click += (s, e) => ShowStep(currentStep - 1);
 
             btnNext = new Button();
             btnNext.Text = "دواتر ➔";
             btnNext.Size = new Size(110, 34);
-            btnNext.Location = new Point(545, 13);
+            btnNext.Location = new Point(585, 13);
             btnNext.BackColor = Color.FromArgb(2, 132, 199);
             btnNext.ForeColor = Color.White;
             btnNext.FlatStyle = FlatStyle.Flat;
@@ -135,16 +147,16 @@ namespace PicQazaInstaller
             pageWelcome.Padding = new Padding(30);
 
             Label lblWelcomeTitle = new Label();
-            lblWelcomeTitle.Text = "بەخێربێن بۆ سیستەمی دامەزراندنی Pic_Qaza";
+            lblWelcomeTitle.Text = "بەخێربێن بۆ سیستەمی دامەزراندنی بەرنامەی Pic_Qaza";
             lblWelcomeTitle.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
             lblWelcomeTitle.ForeColor = Color.FromArgb(30, 41, 59);
             lblWelcomeTitle.Location = new Point(30, 25);
             lblWelcomeTitle.AutoSize = true;
 
             Label lblWelcomeText = new Label();
-            lblWelcomeText.Text = "ئەم ڕێبەرە سەرجەم فایلە پێویستەکانی بەرنامەکە، خزمەتگوزاریەکانی سێرڤەری SQL،\nکتێبخانەکانی داتابەیس و پەڕەی وێبگەڕ لەسەر کۆمپیوتەرەکەت دادەمەزرێنێت.\n\nتایبەتمەندییەکان:\n • تۆمارکردنی وێنە و پسووڵەکان لەناو بنکەی دراوەی Pic_Qaza\n • کەمکردنەوەی قەبارەی وێنەکان بە بەرزترین کوالێتی\n • دروستکردنی شۆرتکەت لەسەر شاشە بۆ دەستپێکردنی خێرا\n\nتکایە کلیک لە دوگمەی 'دواتر ➔' بکە بۆ بەردەوامبوون.";
+            lblWelcomeText.Text = "ئەم ڕێبەرە بەرنامەی Pic_Qaza بە شێوەیەکی سەربەخۆ لەسەر کۆمپیوتەرەکەت دادەمەزرێنێت،\nبەبێ ئەوەی کێشەی نەدۆزینەوەی لۆکاڵ هۆست یان پێویستی بە داتابەیسی ناوخۆیی هەبێت.\n\nتایبەتمەندییە سەرەکییەکان:\n • کارکردنی ئاسان لەسەر دیسکتۆپی هەموو یوزەرەکان لە شوێنە جیاوازەکان\n • پەیوەستبوونی ڕاستەوخۆ بە سێرڤەری سەرەکی\n • تۆمارکردن، ئەرشیف و چاپکردنی خێرای پسووڵەکان بە قەبارەی ستانداردی A5\n • دروستکردنی شۆرتکەتی تایبەت لەسەر شاشەی دیسکتۆپ بە ئایکۆنی 3D\n\nتکایە کلیک لە دوگمەی 'دواتر ➔' بکە بۆ دیاریکردنی هەڵبژاردنەکان.";
             lblWelcomeText.Location = new Point(30, 70);
-            lblWelcomeText.Size = new Size(600, 200);
+            lblWelcomeText.Size = new Size(640, 220);
             lblWelcomeText.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
             lblWelcomeText.ForeColor = Color.FromArgb(51, 65, 85);
 
@@ -152,35 +164,29 @@ namespace PicQazaInstaller
             pageWelcome.Controls.Add(lblWelcomeText);
             this.Controls.Add(pageWelcome);
 
-            // ================= PAGE 2: DESTINATION FOLDER & SHORTCUTS =================
+            // ================= PAGE 2: SETTINGS & SERVER =================
             pageFolder = new Panel();
             pageFolder.Dock = DockStyle.Fill;
-            pageFolder.Padding = new Padding(30);
+            pageFolder.Padding = new Padding(24);
 
+            // Group: Install Path
             Label lblFolderTitle = new Label();
-            lblFolderTitle.Text = "هەڵبژاردنی بوخچەی دامەزراندن و شۆرتکەت:";
-            lblFolderTitle.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
-            lblFolderTitle.Location = new Point(30, 20);
+            lblFolderTitle.Text = "١. شوێنی دابەزاندنی فایلەکان:";
+            lblFolderTitle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            lblFolderTitle.Location = new Point(24, 12);
             lblFolderTitle.AutoSize = true;
 
-            Label lblFolderSub = new Label();
-            lblFolderSub.Text = "فایلەکانی بەرنامەکە لەم شوێنەی خوارەوە دادەمەزرێن:";
-            lblFolderSub.ForeColor = Color.FromArgb(100, 116, 139);
-            lblFolderSub.Location = new Point(30, 50);
-            lblFolderSub.AutoSize = true;
-
             txtInstallPath = new TextBox();
-            // Default target: Desktop\qaza_image as requested
             string defaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "qaza_image");
             txtInstallPath.Text = defaultPath;
-            txtInstallPath.Location = new Point(130, 80);
-            txtInstallPath.Size = new Size(495, 29);
+            txtInstallPath.Location = new Point(120, 38);
+            txtInstallPath.Size = new Size(550, 29);
             txtInstallPath.RightToLeft = RightToLeft.No;
 
             btnBrowse = new Button();
             btnBrowse.Text = "گەڕان...";
-            btnBrowse.Location = new Point(30, 79);
-            btnBrowse.Size = new Size(90, 31);
+            btnBrowse.Location = new Point(24, 37);
+            btnBrowse.Size = new Size(88, 31);
             btnBrowse.Click += (s, e) =>
             {
                 using (FolderBrowserDialog fbd = new FolderBrowserDialog())
@@ -194,38 +200,124 @@ namespace PicQazaInstaller
                 }
             };
 
+            // Group: Deployment Mode
+            Label lblModeTitle = new Label();
+            lblModeTitle.Text = "٢. شێوازی کارکردن (Mode):";
+            lblModeTitle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            lblModeTitle.Location = new Point(24, 82);
+            lblModeTitle.AutoSize = true;
+
+            rbClientMode = new RadioButton();
+            rbClientMode.Text = "💻 کۆمپیوتەری بەکارهێنەر (Client Desktop) - پەیوەستبوون بە سێرڤەری سەرەکی [پێشنیارکراو]";
+            rbClientMode.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            rbClientMode.ForeColor = Color.FromArgb(2, 132, 199);
+            rbClientMode.Checked = true;
+            rbClientMode.Location = new Point(24, 110);
+            rbClientMode.AutoSize = true;
+
+            rbServerMode = new RadioButton();
+            rbServerMode.Text = "🖥️ سێرڤەری سەرەکی (Main Server - Localhost) - تەنها بۆ ئەو کۆمپیوتەرەی بنکەدراوەکەی لەسەرە";
+            rbServerMode.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
+            rbServerMode.ForeColor = Color.FromArgb(71, 85, 105);
+            rbServerMode.Location = new Point(24, 138);
+            rbServerMode.AutoSize = true;
+
+            // Group: Server URL
+            Label lblServerTitle = new Label();
+            lblServerTitle.Text = "٣. ناونیشانی سێرڤەری سەرەکی (Server IP / Host):";
+            lblServerTitle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            lblServerTitle.Location = new Point(24, 175);
+            lblServerTitle.AutoSize = true;
+
+            txtServerUrl = new TextBox();
+            txtServerUrl.Text = "http://192.168.3.1:4500";
+            txtServerUrl.Location = new Point(150, 203);
+            txtServerUrl.Size = new Size(520, 29);
+            txtServerUrl.RightToLeft = RightToLeft.No;
+
+            btnTestServer = new Button();
+            btnTestServer.Text = "پشکنین";
+            btnTestServer.Location = new Point(24, 202);
+            btnTestServer.Size = new Size(115, 31);
+
+            lblServerStatus = new Label();
+            lblServerStatus.Text = "ئامادەیە بۆ بەستنەوە بە سێرڤەری داتابەیس.";
+            lblServerStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblServerStatus.Location = new Point(24, 238);
+            lblServerStatus.Size = new Size(645, 22);
+
+            btnTestServer.Click += (s, e) =>
+            {
+                string u = FormatUrl(txtServerUrl.Text);
+                string h;
+                int p;
+                TryParseHostPort(u, out h, out p);
+                lblServerStatus.ForeColor = Color.FromArgb(100, 116, 139);
+                lblServerStatus.Text = "پشکنین دەکرێت بۆ " + h + ":" + p + "...";
+                Application.DoEvents();
+
+                if (IsPortOpen(h, p, 1000))
+                {
+                    lblServerStatus.ForeColor = Color.FromArgb(22, 163, 74);
+                    lblServerStatus.Text = "✔ پەیوەندی سەرکەوتووبوو! سێرڤەر بەردەستە و بە تەواوی ئیش دەکات.";
+                }
+                else
+                {
+                    lblServerStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                    lblServerStatus.Text = "⚠️ پەیوەندی نەبەسترا! دڵنیابەرەوە سێرڤەری سەرەکی داگیرساوە و لە هەمان تۆڕدان.";
+                }
+            };
+
+            rbServerMode.CheckedChanged += (s, e) =>
+            {
+                if (rbServerMode.Checked)
+                {
+                    txtServerUrl.Text = "http://127.0.0.1:4500";
+                    txtServerUrl.Enabled = false;
+                    btnTestServer.Enabled = false;
+                    lblServerStatus.Text = "دۆخی سێرڤەری ناوخۆیی (Localhost) هەڵبژێردراوە.";
+                }
+                else
+                {
+                    txtServerUrl.Text = "http://192.168.3.1:4500";
+                    txtServerUrl.Enabled = true;
+                    btnTestServer.Enabled = true;
+                    lblServerStatus.Text = "ئامادەیە بۆ بەستنەوە بە سێرڤەری تۆڕ.";
+                }
+            };
+
+            // Group: Shortcuts
             chkDesktopShortcut = new CheckBox();
-            chkDesktopShortcut.Text = "دروستکردنی کورتەبڕ (Shortcut) لەسەر شاشەی دیسکتۆپ";
+            chkDesktopShortcut.Text = "دروستکردنی شۆرتکەت لەسەر شاشەی دیسکتۆپ (Pic_Qaza)";
             chkDesktopShortcut.Checked = true;
-            chkDesktopShortcut.Location = new Point(30, 130);
+            chkDesktopShortcut.Location = new Point(24, 275);
             chkDesktopShortcut.AutoSize = true;
 
             chkStartMenuShortcut = new CheckBox();
             chkStartMenuShortcut.Text = "زیادکردنی بەرنامەکە بۆ لیستی دەستپێک (Start Menu)";
             chkStartMenuShortcut.Checked = true;
-            chkStartMenuShortcut.Location = new Point(30, 165);
+            chkStartMenuShortcut.Location = new Point(24, 305);
             chkStartMenuShortcut.AutoSize = true;
 
             chkLaunchAfter = new CheckBox();
             chkLaunchAfter.Text = "کردنەوەی بەرنامەی Pic_Qaza ڕاستەوخۆ دوای تەواوبوونی دامەزراندن";
             chkLaunchAfter.Checked = true;
-            chkLaunchAfter.Location = new Point(30, 200);
+            chkLaunchAfter.Location = new Point(24, 335);
             chkLaunchAfter.AutoSize = true;
 
-            Label lblSizeNote = new Label();
-            lblSizeNote.Text = "قەبارەی پێویست لەسەر درایڤ: نزیکەی 55 مێگابایت (MB)";
-            lblSizeNote.ForeColor = Color.FromArgb(100, 116, 139);
-            lblSizeNote.Location = new Point(30, 245);
-            lblSizeNote.AutoSize = true;
-
             pageFolder.Controls.Add(lblFolderTitle);
-            pageFolder.Controls.Add(lblFolderSub);
             pageFolder.Controls.Add(btnBrowse);
             pageFolder.Controls.Add(txtInstallPath);
+            pageFolder.Controls.Add(lblModeTitle);
+            pageFolder.Controls.Add(rbClientMode);
+            pageFolder.Controls.Add(rbServerMode);
+            pageFolder.Controls.Add(lblServerTitle);
+            pageFolder.Controls.Add(btnTestServer);
+            pageFolder.Controls.Add(txtServerUrl);
+            pageFolder.Controls.Add(lblServerStatus);
             pageFolder.Controls.Add(chkDesktopShortcut);
             pageFolder.Controls.Add(chkStartMenuShortcut);
             pageFolder.Controls.Add(chkLaunchAfter);
-            pageFolder.Controls.Add(lblSizeNote);
             this.Controls.Add(pageFolder);
 
             // ================= PAGE 3: PROGRESS =================
@@ -234,21 +326,21 @@ namespace PicQazaInstaller
             pageProgress.Padding = new Padding(30);
 
             Label lblProgTitle = new Label();
-            lblProgTitle.Text = "تکایە چاوەڕوانبە، فایلەکان دادەمەزرێن...";
+            lblProgTitle.Text = "تکایە چاوەڕوانبە، بەرنامەکە دادەمەزرێت...";
             lblProgTitle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
             lblProgTitle.Location = new Point(30, 30);
             lblProgTitle.AutoSize = true;
 
             progressBar = new ProgressBar();
             progressBar.Location = new Point(30, 80);
-            progressBar.Size = new Size(595, 28);
+            progressBar.Size = new Size(640, 28);
             progressBar.Style = ProgressBarStyle.Continuous;
 
             lblStatus = new Label();
             lblStatus.Text = "ئامادەکاری بۆ دەرهێنانی فایلەکان...";
             lblStatus.ForeColor = Color.FromArgb(71, 85, 105);
             lblStatus.Location = new Point(30, 120);
-            lblStatus.Size = new Size(595, 60);
+            lblStatus.Size = new Size(640, 60);
 
             pageProgress.Controls.Add(lblProgTitle);
             pageProgress.Controls.Add(progressBar);
@@ -268,9 +360,9 @@ namespace PicQazaInstaller
             lblFinishTitle.AutoSize = true;
 
             Label lblFinishDesc = new Label();
-            lblFinishDesc.Text = "سەرجەم فایلەکان و کتێبخانەکان بە سەرکەوتوویی جێگیرکران.\nشۆرتکەتی سەرەکی بەرنامەکە خرایە سەر شاشەی دیسکتۆپ بەناوی (Pic_Qaza).\n\nکلیک لەسەر دوگمەی 'تەواوکردن' بکە بۆ داخستنی ئەم ڕێبەرە.";
+            lblFinishDesc.Text = "سەرجەم فایلە پێویستەکان جێگیرکران و ڕێکخستنی سێرڤەر بە سەرکەوتوویی تەواوبوو.\nشۆرتکەتی بەرنامەکە خرایە سەر شاشەی دیسکتۆپ.\n\nکلیک لەسەر دوگمەی 'تەواوکردن' بکە بۆ داخستنی ئەم ڕێبەرە.";
             lblFinishDesc.Location = new Point(30, 85);
-            lblFinishDesc.Size = new Size(595, 140);
+            lblFinishDesc.Size = new Size(640, 140);
             lblFinishDesc.ForeColor = Color.FromArgb(51, 65, 85);
 
             pageFinished.Controls.Add(lblFinishTitle);
@@ -312,7 +404,7 @@ namespace PicQazaInstaller
             else if (step == 2)
             {
                 btnNext.Text = "دامەزراندن ➔";
-                lblBannerSub.Text = "دیاریکردنی شوێنی دابەزاندن و شۆرتکەت";
+                lblBannerSub.Text = "دیاریکردنی شوێنی دابەزاندن، جۆری کارکردن و ناونیشانی سێرڤەر";
             }
             else if (step == 3)
             {
@@ -347,11 +439,19 @@ namespace PicQazaInstaller
                 }
 
                 ShowStep(3);
-                installWorker.RunWorkerAsync(targetPath);
+
+                // Pass install parameters
+                InstallParams p = new InstallParams();
+                p.TargetDir = targetPath;
+                p.IsClientMode = rbClientMode.Checked;
+                p.ServerUrl = FormatUrl(txtServerUrl.Text);
+                p.CreateDesktopShortcut = chkDesktopShortcut.Checked;
+                p.CreateStartShortcut = chkStartMenuShortcut.Checked;
+
+                installWorker.RunWorkerAsync(p);
             }
             else if (currentStep == 4)
             {
-                // Launch if requested
                 if (chkLaunchAfter.Checked)
                 {
                     string targetPath = txtInstallPath.Text.Trim();
@@ -369,9 +469,19 @@ namespace PicQazaInstaller
             }
         }
 
+        private class InstallParams
+        {
+            public string TargetDir;
+            public bool IsClientMode;
+            public string ServerUrl;
+            public bool CreateDesktopShortcut;
+            public bool CreateStartShortcut;
+        }
+
         private void InstallWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            string targetDir = e.Argument.ToString();
+            InstallParams param = (InstallParams)e.Argument;
+            string targetDir = param.TargetDir;
             installError = null;
 
             try
@@ -383,7 +493,6 @@ namespace PicQazaInstaller
 
                 installWorker.ReportProgress(5, "دەرهێنانی فایلی دامەزراندن...");
 
-                // Get embedded resource stream
                 Assembly asm = Assembly.GetExecutingAssembly();
                 string resourceName = null;
                 foreach (string name in asm.GetManifestResourceNames())
@@ -438,6 +547,15 @@ namespace PicQazaInstaller
 
                 try { File.Delete(tempZip); } catch { }
 
+                // Save custom app_config.json
+                string configPath = Path.Combine(targetDir, "app_config.json");
+                string configJson = string.Format(
+                    "{{\n  \"serverUrl\": \"http://127.0.0.1:4500\",\n  \"networkServerUrl\": \"{0}\",\n  \"useNetworkServer\": {1},\n  \"notes\": \"بۆ بەکارهێنان لەسەر کۆمپیوتەری تر (Client)، ئەم فایله ناونیشانی سێرڤەری تێدایە.\"\n}}\n",
+                    param.ServerUrl,
+                    param.IsClientMode ? "true" : "false"
+                );
+                File.WriteAllText(configPath, configJson);
+
                 // Ensure uploads directory exists
                 string uploadsDir = Path.Combine(targetDir, @"public\uploads");
                 if (!Directory.Exists(uploadsDir))
@@ -446,7 +564,7 @@ namespace PicQazaInstaller
                 }
 
                 // Create Desktop Shortcut
-                if (chkDesktopShortcut.Checked)
+                if (param.CreateDesktopShortcut)
                 {
                     installWorker.ReportProgress(92, "دروستکردنی شۆرتکەت لەسەر دیسکتۆپ...");
                     string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -456,7 +574,7 @@ namespace PicQazaInstaller
                 }
 
                 // Create Start Menu Shortcut
-                if (chkStartMenuShortcut.Checked)
+                if (param.CreateStartShortcut)
                 {
                     installWorker.ReportProgress(96, "دروستکردنی شۆرتکەت لەناو Start Menu...");
                     string startMenu = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
@@ -505,7 +623,6 @@ namespace PicQazaInstaller
             }
             catch { }
 
-            // Fallback via PowerShell
             try
             {
                 string ps = string.Format(
@@ -521,6 +638,57 @@ namespace PicQazaInstaller
                 }
             }
             catch { }
+        }
+
+        public static string FormatUrl(string input)
+        {
+            input = (input ?? "").Trim();
+            if (string.IsNullOrEmpty(input)) return "http://192.168.3.1:4500";
+            if (!input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                input = "http://" + input;
+            }
+            if (!input.Substring(7).Contains(":"))
+            {
+                input += ":4500";
+            }
+            return input;
+        }
+
+        public static bool TryParseHostPort(string url, out string host, out int port)
+        {
+            host = "192.168.3.1";
+            port = 4500;
+            try
+            {
+                url = FormatUrl(url);
+                Uri uri = new Uri(url);
+                host = uri.Host;
+                port = uri.Port > 0 ? uri.Port : 4500;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool IsPortOpen(string host, int port, int timeoutMs = 800)
+        {
+            try
+            {
+                using (TcpClient client = new TcpClient())
+                {
+                    var result = client.BeginConnect(host, port, null, null);
+                    bool success = result.AsyncWaitHandle.WaitOne(timeoutMs);
+                    return success && client.Connected;
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         [STAThread]

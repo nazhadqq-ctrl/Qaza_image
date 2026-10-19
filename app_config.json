@@ -1,6 +1,6 @@
 {
   "serverUrl": "http://127.0.0.1:4500",
   "networkServerUrl": "http://192.168.3.1:4500",
-  "useNetworkServer": false,
-  "notes": "ئەگەر لەسەر کۆمپیوتەری تر (Client) بەرنامەکەت داناوە، useNetworkServer بکە بە true"
+  "useNetworkServer": true,
+  "notes": "بۆ بەکارهێنان لەسەر کۆمپیوتەری تر (Client)، ئەم فایله ناونیشانی سێرڤەری تێدایە."
 }

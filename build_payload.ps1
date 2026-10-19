@@ -3,12 +3,23 @@ $sourceDir = "C:\Users\Nazha\.gemini\antigravity-ide\scratch\Pic_Qaza"
 $stageDir = Join-Path $sourceDir "staging_build"
 $zipPath = Join-Path $sourceDir "payload.zip"
 $installerExe = Join-Path $sourceDir "Setup_Pic_Qaza.exe"
+$cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
-Write-Output "[1/5] Cleaning temp files..."
+Write-Output "[1/6] Cleaning temp files..."
 if (Test-Path $stageDir) { Remove-Item -Recurse -Force $stageDir }
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 
-Write-Output "[2/5] Staging updated files..."
+Write-Output "[2/6] Compiling Launcher.cs -> Pic_Qaza.exe..."
+$launcherIcon = "/win32icon:" + (Join-Path $sourceDir "app.ico")
+$launcherOut = "/out:" + (Join-Path $sourceDir "Pic_Qaza.exe")
+$launcherSrc = Join-Path $sourceDir "Launcher.cs"
+& $cscPath /target:winexe $launcherIcon $launcherOut $launcherSrc
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Compilation of Pic_Qaza.exe FAILED"
+    exit 1
+}
+
+Write-Output "[3/6] Staging updated files..."
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir "public\uploads") | Out-Null
 
@@ -44,7 +55,7 @@ if (Test-Path (Join-Path $sourceDir "public\uploads\.gitkeep")) {
 Write-Output "Copying node_modules..."
 Copy-Item -Recurse (Join-Path $sourceDir "node_modules") (Join-Path $stageDir "node_modules")
 
-Write-Output "[3/5] Creating payload.zip..."
+Write-Output "[4/6] Creating payload.zip..."
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stageDir, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Remove-Item -Recurse -Force $stageDir
@@ -52,8 +63,7 @@ Remove-Item -Recurse -Force $stageDir
 $zipSizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)
 Write-Output "payload.zip created: $zipSizeMB MB"
 
-Write-Output "[4/5] Compiling Setup_Pic_Qaza.exe..."
-$cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+Write-Output "[5/6] Compiling Setup_Pic_Qaza.exe..."
 $iconArg = "/win32icon:" + $sourceDir + "\app.ico"
 $outArg = "/out:" + $installerExe
 $resArg = "/resource:" + $zipPath + ",payload.zip"
@@ -69,7 +79,7 @@ if ($LASTEXITCODE -ne 0) {
 $exeSizeMB = [math]::Round((Get-Item $installerExe).Length / 1MB, 2)
 Write-Output "Setup_Pic_Qaza.exe compiled successfully: $exeSizeMB MB"
 
-Write-Output "[5/5] Copying installer to Desktop..."
+Write-Output "[6/6] Copying installer to Desktop..."
 $desktop1 = "C:\Users\Nazha\OneDrive\Desktop"
 $desktop2 = "C:\Users\Nazha\Desktop"
 
