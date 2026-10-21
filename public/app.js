@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewImageElem = document.getElementById('preview-image-elem');
     const btnRemoveImage = document.getElementById('btn-remove-image');
     const btnEnlargePreview = document.getElementById('btn-enlarge-preview');
+    const btnRotateFormImage = document.getElementById('btn-rotate-form-image');
 
     const compressionMeter = document.getElementById('compression-meter');
     const meterOrigSize = document.getElementById('meter-orig-size');
@@ -146,11 +147,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalLightbox = document.getElementById('modal-lightbox');
     const btnCloseLightbox = document.getElementById('btn-close-lightbox');
     const btnLightboxPrint = document.getElementById('btn-lightbox-print');
+    const btnLightboxRotate = document.getElementById('btn-lightbox-rotate');
+    const btnLightboxSaveRotation = document.getElementById('btn-lightbox-save-rotation');
     const lightboxImg = document.getElementById('lightbox-img');
     const lightboxTitle = document.getElementById('lightbox-title');
     const lightboxDownloadLink = document.getElementById('lightbox-download-link');
     const lightboxInfoBar = document.getElementById('lightbox-info-bar');
     let currentReceiptPrintData = null;
+    let currentLightboxRotation = 0;
 
     // ================= 1. SQL SERVER HEALTH CHECK =================
     async function checkDbStatus() {
@@ -458,9 +462,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function compressAndDisplayImage(img, origSizeKB) {
-        // High Quality Dimension Capping: Max 1920 width / 1080 height (Full HD)
-        const maxWidth = 1920;
-        const maxHeight = 1080;
+        // High Quality Dimension Capping: Up to 2560px (Ultra-sharp for A4 printing)
+        const maxWidth = 2560;
+        const maxHeight = 2560;
         let width = img.width;
         let height = img.height;
 
@@ -470,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 width = maxWidth;
             } else {
                 width = Math.round((width * maxHeight) / height);
-                maxHeight;
+                height = maxHeight;
             }
         }
 
@@ -535,6 +539,25 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
     });
+
+    // Rotate image in registration form (90 degrees clockwise)
+    if (btnRotateFormImage) {
+        btnRotateFormImage.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!currentOptimizedImageBase64) return;
+            const btnText = btnRotateFormImage.textContent;
+            btnRotateFormImage.textContent = '⏳...';
+            try {
+                const rotatedBase64 = await rotateImageBase64(currentOptimizedImageBase64, 90);
+                currentOptimizedImageBase64 = rotatedBase64;
+                previewImageElem.src = rotatedBase64;
+            } catch (err) {
+                console.error('Rotate form image error:', err);
+            } finally {
+                btnRotateFormImage.textContent = btnText;
+            }
+        });
+    }
 
     // Form Submit (Save to Database)
     receiptImageForm.addEventListener('submit', async (e) => {
@@ -650,14 +673,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>${item.ReceiptDate}</td>
                         <td>${timeFormatted}</td>
                         <td>
-                            <img src="${item.ImagePath}" alt="وێنە" class="table-thumb-img" data-full="${item.ImagePath}" data-receipt="${item.ReceiptNo}" data-serial="${item.SerialNo}" data-date="${item.ReceiptDate}" data-time="${item.CreatedTime || ''}" data-user="${item.RegisteredBy}" data-size="${item.ImageSizeKB}">
+                            <img src="${item.ImagePath}" alt="وێنە" class="table-thumb-img" data-id="${item.Id}" data-full="${item.ImagePath}" data-receipt="${item.ReceiptNo}" data-serial="${item.SerialNo}" data-date="${item.ReceiptDate}" data-time="${item.CreatedTime || ''}" data-user="${item.RegisteredBy}" data-size="${item.ImageSizeKB}">
                         </td>
                         <td><span class="kb-badge">${item.ImageSizeKB ? item.ImageSizeKB.toFixed(1) : '-'} کیلۆبایت</span></td>
                         <td>👤 ${item.RegisteredBy}</td>
                         <td>
                             <div class="actions-cell-flex">
                                 <button class="btn-action-icon view-img-btn" title="پیشاندانی گەورە">🔍</button>
-                                <button class="btn-action-icon print print-img-btn" title="چاپکردنی پسووڵە (A5)">🖨️</button>
+                                <button class="btn-action-icon print print-img-btn" title="چاپکردنی پسووڵە (A4)">🖨️</button>
                                 <a href="${item.ImagePath}" download="receipt_${item.ReceiptNo}.jpg" class="btn-action-icon" title="دابەزاندن">⬇</a>
                                 ${isAdmin ? `<button class="btn-action-icon delete delete-img-btn" data-id="${item.Id}" data-receipt="${item.ReceiptNo}" title="سڕینەوە">🗑️</button>` : ''}
                             </div>
@@ -672,6 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const row = e.target.closest('tr');
                         const img = row.querySelector('.table-thumb-img');
                         const rowData = {
+                            id: img.getAttribute('data-id'),
                             imageSrc: img.getAttribute('data-full'),
                             receiptNo: img.getAttribute('data-receipt'),
                             serialNo: img.getAttribute('data-serial'),
@@ -696,6 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const row = e.target.closest('tr');
                         const img = row.querySelector('.table-thumb-img');
                         const rowData = {
+                            id: img.getAttribute('data-id'),
                             imageSrc: img.getAttribute('data-full'),
                             receiptNo: img.getAttribute('data-receipt'),
                             serialNo: img.getAttribute('data-serial'),
@@ -704,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             registeredBy: img.getAttribute('data-user'),
                             imageSizeKB: img.getAttribute('data-size')
                         };
-                        printReceiptA5(rowData);
+                        printReceiptA4(rowData);
                     });
                 });
 
@@ -761,12 +786,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ================= 6. LIGHTBOX MODAL & A5 RECEIPT PRINTING =================
+    // ================= HELPER: ROTATE IMAGE VIA CANVAS =================
+    function rotateImageBase64(imgSrc, angle) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const normAngle = ((angle % 360) + 360) % 360;
+                const is90or270 = (normAngle === 90 || normAngle === 270);
+
+                if (is90or270) {
+                    canvas.width = img.naturalHeight || img.height;
+                    canvas.height = img.naturalWidth || img.width;
+                } else {
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                }
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate((normAngle * Math.PI) / 180);
+                ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+                resolve(canvas.toDataURL('image/jpeg', 0.92));
+            };
+            img.onerror = () => reject(new Error('هەڵە لە بارکردنی وێنە بۆ سووڕاندن'));
+            img.src = imgSrc;
+        });
+    }
+
+    // ================= 6. LIGHTBOX MODAL & A4 RECEIPT PRINTING =================
     function openLightbox(src, title, info, receiptData = null) {
+        currentLightboxRotation = 0;
+        lightboxImg.style.transform = 'none';
         lightboxImg.src = src;
         lightboxTitle.textContent = title;
         lightboxDownloadLink.href = src;
         lightboxInfoBar.textContent = info;
         currentReceiptPrintData = receiptData || {
+            id: null,
             imageSrc: src,
             receiptNo: '',
             serialNo: '',
@@ -774,37 +836,132 @@ document.addEventListener('DOMContentLoaded', () => {
             registeredBy: '',
             imageSizeKB: ''
         };
+
+        if (btnLightboxSaveRotation) {
+            btnLightboxSaveRotation.style.display = (currentReceiptPrintData && currentReceiptPrintData.id) ? 'inline-flex' : 'none';
+        }
+
         modalLightbox.style.display = 'flex';
     }
 
     btnCloseLightbox.addEventListener('click', () => {
         modalLightbox.style.display = 'none';
         lightboxImg.src = '';
+        lightboxImg.style.transform = 'none';
+        currentLightboxRotation = 0;
         currentReceiptPrintData = null;
     });
+
+    // Lightbox Rotate button (90° step)
+    if (btnLightboxRotate) {
+        btnLightboxRotate.addEventListener('click', () => {
+            currentLightboxRotation = (currentLightboxRotation + 90) % 360;
+            lightboxImg.style.transform = `rotate(${currentLightboxRotation}deg)`;
+            lightboxImg.style.transition = 'transform 0.25s ease';
+        });
+    }
+
+    // Save rotated image permanently to database & disk
+    if (btnLightboxSaveRotation) {
+        btnLightboxSaveRotation.addEventListener('click', async () => {
+            if (!currentReceiptPrintData || !currentReceiptPrintData.id) {
+                alert('تەنها دەتوانیت وێنەی تۆمارکراو پاشەکەوت بکەیت.');
+                return;
+            }
+            if (currentLightboxRotation === 0) {
+                alert('تکایە سەرەتا بە دوگمەی سووڕاندن (90°) وێنەکە بسووڕێنە پاشان پاشەکەوتی بکە.');
+                return;
+            }
+
+            const origText = btnLightboxSaveRotation.textContent;
+            btnLightboxSaveRotation.textContent = '⏳ پاشەکەوت دەکرێت...';
+            btnLightboxSaveRotation.disabled = true;
+
+            try {
+                const rotatedBase64 = await rotateImageBase64(currentReceiptPrintData.imageSrc, currentLightboxRotation);
+                const res = await fetch(`/api/images/${currentReceiptPrintData.id}/rotate`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        imageBase64: rotatedBase64,
+                        rotationAngle: currentLightboxRotation
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('وێنەکە بە سەرکەوتوویی سووڕێندرا و لە داتابەیس بە پێچەوانەکراوەیی نوێکرایەوە!');
+                    currentLightboxRotation = 0;
+                    lightboxImg.style.transform = 'none';
+                    const newSrc = result.imagePath + '?t=' + Date.now();
+                    lightboxImg.src = newSrc;
+                    currentReceiptPrintData.imageSrc = newSrc;
+                    if (result.imageSizeKB) {
+                        currentReceiptPrintData.imageSizeKB = result.imageSizeKB;
+                    }
+                    loadImagesTable(inputSearchImages.value.trim());
+                } else {
+                    alert('هەڵە لە پاشەکەوتکردنی سووڕاندن: ' + (result.message || 'نەزانراو'));
+                }
+            } catch (err) {
+                alert('هەڵە لە پەیوەندی بە سێرڤەر: ' + err.message);
+            } finally {
+                btnLightboxSaveRotation.textContent = origText;
+                btnLightboxSaveRotation.disabled = false;
+            }
+        });
+    }
 
     if (btnLightboxPrint) {
         btnLightboxPrint.addEventListener('click', () => {
             if (currentReceiptPrintData) {
-                printReceiptA5(currentReceiptPrintData);
+                printReceiptA4(currentReceiptPrintData, currentLightboxRotation);
             } else if (lightboxImg.src) {
-                printReceiptA5({
+                printReceiptA4({
                     imageSrc: lightboxImg.src,
                     receiptNo: '',
                     serialNo: '',
                     receiptDate: '',
                     registeredBy: '',
                     imageSizeKB: ''
-                });
+                }, currentLightboxRotation);
             }
         });
     }
 
-    // ================= A5 RECEIPT PRINTING FUNCTION =================
-    function printReceiptA5(data) {
+    // ================= STANDARD A4 RECEIPT PRINTING FUNCTION =================
+    async function printReceiptA4(data, explicitRotation = null) {
         if (!data || !data.imageSrc) {
             alert('وێنەی پسووڵە بەردەست نییە بۆ چاپکردن!');
             return;
+        }
+
+        // Determine final image source to print (with auto-orientation detection)
+        let finalPrintSrc = data.imageSrc;
+
+        try {
+            const probeImg = await new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = data.imageSrc;
+            });
+
+            if (probeImg) {
+                let targetAngle = 0;
+                if (explicitRotation !== null && explicitRotation !== undefined && explicitRotation !== 0) {
+                    targetAngle = explicitRotation;
+                } else if (probeImg.naturalHeight > probeImg.naturalWidth * 1.35) {
+                    // Receipt was photographed vertically: auto-rotate 90° so it stretches horizontally across A4 width
+                    targetAngle = 90;
+                }
+
+                if (targetAngle !== 0) {
+                    finalPrintSrc = await rotateImageBase64(data.imageSrc, targetAngle);
+                }
+            }
+        } catch (e) {
+            console.warn('Image orientation check failed, proceeding with original:', e);
         }
 
         // Remove any old printing iframe
@@ -825,18 +982,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(iframe);
 
         const printDoc = iframe.contentWindow.document;
-        const printDateFormatted = new Date().toLocaleString('ku');
 
         const html = `
 <!DOCTYPE html>
 <html lang="ckb" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title></title>
+    <title>چاپکردنی پسووڵە</title>
     <style>
         @page {
-            size: A5 portrait;
-            margin: 0 !important;
+            size: A4 portrait;
+            margin: 6mm 8mm !important;
         }
         * {
             box-sizing: border-box;
@@ -846,8 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
             print-color-adjust: exact;
         }
         html, body {
-            width: 148mm;
-            height: 210mm;
+            width: 100%;
+            height: 100%;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff;
@@ -856,47 +1012,51 @@ document.addEventListener('DOMContentLoaded', () => {
             direction: rtl;
             overflow: hidden;
         }
-        .a5-container {
-            width: 148mm;
-            height: 210mm;
+        .a4-print-page {
+            width: 100%;
+            max-width: 194mm;
+            height: 282mm;
+            max-height: 282mm;
             box-sizing: border-box;
-            padding: 5mm 6mm;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             page-break-inside: avoid;
             page-break-after: avoid;
+            page-break-before: avoid;
             overflow: hidden;
         }
         .receipt-header-card {
             border: 2px solid #0f172a;
-            border-radius: 6px;
-            padding: 5px 8px;
+            border-radius: 8px;
+            padding: 6px 10px;
             background: #f8fafc;
+            margin-bottom: 4mm;
+            flex-shrink: 0;
         }
         .meta-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
+            gap: 8px;
         }
         .meta-box {
             background: #ffffff;
             border: 1px solid #cbd5e1;
-            padding: 3px 6px;
-            border-radius: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
             text-align: right;
         }
         .meta-label {
-            font-size: 7.5pt;
-            color: #64748b;
+            font-size: 8.5pt;
+            color: #475569;
             display: block;
-            margin-bottom: 1px;
-            font-weight: 600;
+            margin-bottom: 2px;
+            font-weight: 700;
         }
         .meta-value {
-            font-size: 9pt;
-            font-weight: 800;
+            font-size: 11pt;
+            font-weight: 900;
             color: #0f172a;
             white-space: nowrap;
             overflow: hidden;
@@ -904,30 +1064,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         .image-frame {
             width: 100%;
-            height: 174mm;
-            max-height: 174mm;
-            border: 1.5px solid #0f172a;
-            border-radius: 6px;
+            height: 254mm;
+            max-height: 254mm;
+            border: 2px solid #0f172a;
+            border-radius: 8px;
             background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            margin-top: 4mm;
             box-sizing: border-box;
+            flex-grow: 1;
         }
         .receipt-image {
             max-width: 100%;
-            max-height: 172mm;
+            max-height: 100%;
+            width: 100%;
+            height: auto;
             object-fit: contain;
             display: block;
-            margin: 0 auto;
+            margin: auto;
         }
     </style>
 </head>
 <body>
-    <div class="a5-container">
-        <!-- Header: Only essential receipt details -->
+    <div class="a4-print-page">
+        <!-- Header: receipt details -->
         <div class="receipt-header-card">
             <div class="meta-grid">
                 <div class="meta-box">
@@ -949,9 +1111,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         </div>
 
-        <!-- Receipt Image (clean and filling full A5 / half A4 with NO text underneath) -->
+        <!-- Receipt Image (crisp, filling full A4 width and height) -->
         <div class="image-frame">
-            <img id="print-receipt-image" src="${data.imageSrc}" class="receipt-image" alt="وێنەی پسووڵە">
+            <img id="print-receipt-image" src="${finalPrintSrc}" class="receipt-image" alt="وێنەی پسووڵە">
         </div>
     </div>
 </body>
@@ -983,6 +1145,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(triggerPrint, 300);
         }
     }
+
+    // Backwards compatibility alias
+    const printReceiptA5 = printReceiptA4;
 
     // ================= 7. USER MANAGEMENT MODAL (ADMIN ONLY) =================
     function openUsersModal() {

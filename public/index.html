@@ -286,8 +286,9 @@
                             <div class="dropzone-preview" id="dropzone-preview-state" style="display: none;">
                                 <img id="preview-image-elem" src="" alt="وێنەی دیاریکراو">
                                 <div class="preview-overlay-actions">
-                                    <button type="button" class="btn-preview-action" id="btn-remove-image" title="سڕینەوەی وێنە">✕ سڕینەوە</button>
+                                    <button type="button" class="btn-preview-action" id="btn-rotate-form-image" title="سووڕاندنی وێنە بە ٩٠ پلە">🔄 سووڕاندن (90°)</button>
                                     <button type="button" class="btn-preview-action" id="btn-enlarge-preview" title="پیشاندانی گەورە">🔍 گەورەکردن</button>
+                                    <button type="button" class="btn-preview-action" id="btn-remove-image" title="سڕینەوەی وێنە">✕ سڕینەوە</button>
                                 </div>
                             </div>
                         </div>
@@ -459,7 +460,9 @@
                 <div class="lightbox-header">
                     <h3 id="lightbox-title">پیشاندانی وێنەی پسووڵە</h3>
                     <div class="lightbox-actions">
-                        <button id="btn-lightbox-print" class="btn-primary btn-sm btn-print" title="چاپکردن بە قەبارەی پەڕەی A5">🖨️ چاپکردن (A5)</button>
+                        <button id="btn-lightbox-rotate" class="btn-secondary btn-sm" title="سووڕاندنی وێنە بە ٩٠ پلە">🔄 سووڕاندن (90°)</button>
+                        <button id="btn-lightbox-save-rotation" class="btn-secondary btn-sm" style="display: none; background: #059669; color: #fff; border-color: #059669;" title="پاشەکەوتکردنی ئاراستەی نوێ لە سێرڤەر">💾 پاشەکەوتکردن</button>
+                        <button id="btn-lightbox-print" class="btn-primary btn-sm btn-print" title="چاپکردنی تەواو لەسەر یەک پەڕەی ستانداردی A4">🖨️ چاپکردن (A4)</button>
                         <a id="lightbox-download-link" href="#" download class="btn-secondary btn-sm">⬇ دابەزاندن</a>
                         <button class="btn-close-modal" id="btn-close-lightbox">✕</button>
                     </div>

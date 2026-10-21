@@ -342,6 +342,48 @@ app.delete('/api/images/:id', async (req, res) => {
     }
 });
 
+// Update & save rotated receipt image
+app.put('/api/images/:id/rotate', async (req, res) => {
+    const { id } = req.params;
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+        return res.status(400).json({ success: false, message: 'داتای وێنە بەردەست نییە.' });
+    }
+
+    try {
+        const pool = await getPool();
+        const selectRes = await pool.request().input('id', sql.Int, parseInt(id)).query('SELECT ImagePath FROM QazaImages WHERE Id = @id');
+        if (selectRes.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'تۆمار نەدۆزرایەوە.' });
+        }
+
+        const imgRelPath = selectRes.recordset[0].ImagePath;
+        const fullPath = path.join(__dirname, 'public', imgRelPath.replace(/^\//, ''));
+
+        const matches = imageBase64.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+        let buffer;
+        if (matches) {
+            buffer = Buffer.from(matches[2], 'base64');
+        } else {
+            buffer = Buffer.from(imageBase64, 'base64');
+        }
+
+        fs.writeFileSync(fullPath, buffer);
+        const sizeKB = parseFloat((buffer.length / 1024).toFixed(2));
+
+        await pool.request()
+            .input('id', sql.Int, parseInt(id))
+            .input('size', sql.Float, sizeKB)
+            .query('UPDATE QazaImages SET ImageSizeKB = @size WHERE Id = @id');
+
+        res.json({ success: true, message: 'ئاراستەی نوێی وێنەکە بە سەرکەوتوویی پاشەکەوتکرا', sizeKB });
+    } catch (err) {
+        console.error('[Rotate Image Error]', err);
+        res.status(500).json({ success: false, message: 'هەڵە لە نوێکردنەوەی وێنە: ' + err.message });
+    }
+});
+
 // Fallback to index.html for SPA
 app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
